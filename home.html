@@ -1,0 +1,142 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ICU Risk Prediction</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+</head>
+<body>
+    <nav>
+        <ul>
+            <li><a href="/">Home</a></li>
+            <li><a href="/icu_trends">ICU Trends Analysis</a></li>
+            <li><a href="/risk_classification">Patient Risk Classification</a></li>
+            <li><a href="/resource_forecasting">Resource Forecasting</a></li>
+        </ul>
+    </nav>
+
+    <header>
+        <h1>Welcome to the ICU Risk Prediction System</h1>
+        <p>Analyze and predict ICU admission risks based on patient data.</p>
+    </header>
+
+    <!-- ✅ ICU Patient Summary -->
+    <section id="patientSummary">
+        <h2>ICU Patient Summary</h2>
+        <div class="summary-container">
+            <div class="summary-card low-risk">Low Risk: <span id="lowRiskCount">0</span></div>
+            <div class="summary-card medium-risk">Medium Risk: <span id="mediumRiskCount">0</span></div>
+            <div class="summary-card high-risk">High Risk: <span id="highRiskCount">0</span></div>
+            <div class="summary-card avg-score">Avg Risk Score: <span id="avgRiskScore">0.00</span></div>
+        </div>
+    </section>
+
+    <!-- ✅ Search Box -->
+    <section>
+        <h2>Search Patient ICU Risk</h2>
+        <input type="text" id="patient_id" placeholder="Enter Patient ID">
+        <button onclick="searchPatient()">Search</button>
+    </section>
+
+    <!-- ✅ Searched Patient Details (Hidden Initially) -->
+    <section id="patientDetailsSection" class="hidden">
+        <h2 id="searchedPatientTitle" class="hidden">Searched Patient Details</h2>
+        <table border="1" id="patientDetailsTable">
+            <thead id="tableHeader" class="hidden">
+                <tr>
+                    <th>Patient ID</th>
+                    <th>ICU Risk Score</th>
+                    <th>Risk Category</th>
+                </tr>
+            </thead>
+            <tbody id="patientDetailsBody"></tbody>
+        </table>
+    </section>
+
+    <!-- ✅ Pie Chart (Centered) -->
+    <section>
+        <h2>Live ICU Risk Distribution</h2>
+        <p>Total Patients: <span id="totalPatients">0</span></p>
+        <div class="chart-container">
+            <canvas id="riskChart"></canvas>
+        </div>
+    </section>
+
+    <script>
+        let patientData = [];
+
+        async function fetchRiskData() {
+            const response = await fetch('/api/get_risk_data');
+            patientData = await response.json();
+
+            document.getElementById("totalPatients").textContent = patientData.length;
+
+            let riskCounts = { "Low Risk": 0, "Medium Risk": 0, "High Risk": 0 };
+            let totalRiskScore = 0;
+
+            patientData.forEach(patient => {
+                totalRiskScore += parseFloat(patient.ICU_RISK_SCORE);
+                riskCounts[patient.RISK_CATEGORY]++;
+            });
+
+            document.getElementById("lowRiskCount").innerText = riskCounts["Low Risk"];
+            document.getElementById("mediumRiskCount").innerText = riskCounts["Medium Risk"];
+            document.getElementById("highRiskCount").innerText = riskCounts["High Risk"];
+            document.getElementById("avgRiskScore").innerText = (totalRiskScore / patientData.length).toFixed(2);
+
+            renderChart(riskCounts);
+        }
+
+        function searchPatient() {
+            let searchValue = document.getElementById("patient_id").value.trim();
+            let filteredData = patientData.filter(patient => patient.PATIENT.toLowerCase() === searchValue.toLowerCase());
+
+            let tableBody = document.getElementById("patientDetailsBody");
+            tableBody.innerHTML = "";
+
+            if (filteredData.length > 0) {
+                filteredData.forEach(patient => {
+                    let row = `<tr>
+                        <td>${patient.PATIENT}</td>
+                        <td>${parseFloat(patient.ICU_RISK_SCORE).toFixed(2)}</td>
+                        <td>${patient.RISK_CATEGORY}</td>
+                    </tr>`;
+                    tableBody.innerHTML += row;
+                });
+
+                document.getElementById("patientDetailsSection").classList.remove("hidden");
+                document.getElementById("tableHeader").classList.remove("hidden");
+                document.getElementById("searchedPatientTitle").classList.remove("hidden");  // ✅ SHOW TITLE AFTER SEARCH
+            } else {
+                alert("Patient ID not found!");
+                document.getElementById("patientDetailsSection").classList.add("hidden");
+                document.getElementById("tableHeader").classList.add("hidden");
+                document.getElementById("searchedPatientTitle").classList.add("hidden");  // ✅ HIDE TITLE IF NOT FOUND
+            }
+        }
+
+        function renderChart(riskCounts) {
+            const ctx = document.getElementById("riskChart").getContext("2d");
+            new Chart(ctx, {
+                type: "pie",
+                data: {
+                    labels: ["Low Risk", "Medium Risk", "High Risk"],
+                    datasets: [{
+                        data: Object.values(riskCounts),
+                        backgroundColor: ["blue", "orange", "red"]
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false
+                }
+            });
+        }
+
+        window.onload = fetchRiskData;
+    </script>
+
+</body>
+</html>

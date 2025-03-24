@@ -1,0 +1,126 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ICU Trends Analysis</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+</head>
+<body>
+    <div class="container">
+        <header>
+            <nav>
+                <ul>
+                    <li><a href="/">Home</a></li>
+                    <li><a href="/icu_trends">ICU Trends Analysis</a></li>
+                    <li><a href="/risk_classification">Patient Risk Classification</a></li>
+                    <li><a href="/resource_forecasting">Resource Forecasting</a></li>
+                </ul>
+            </nav>
+        </header>
+
+        <!-- ✅ ICU Admission Trends Overview -->
+        <section>
+            <h2>ICU Admission Trends</h2>
+            <p>Analyze historical ICU admissions and predict upcoming trends.</p>
+
+            <label for="trendRange">Select Date Range:</label>
+            <select id="trendRange">
+                <option value="7">Last 7 Days</option>
+                <option value="30">Last 30 Days</option>
+                <option value="90">Last 90 Days</option>
+                <option value="365">Last Year</option>
+            </select>
+
+            <label for="conditionFilter">Filter by Condition:</label>
+            <select id="conditionFilter">
+                <option value="All">All Conditions</option>
+                <option value="Sepsis">Sepsis</option>
+                <option value="COVID-19">COVID-19</option>
+                <option value="Pneumonia">Pneumonia</option>
+            </select>
+
+            <button onclick="fetchICUTrends()">View Trends Visualization</button>
+        </section>
+
+        <!-- ✅ Live ICU Trends Chart -->
+        <section id="trendChartSection" class="hidden">
+            <h2>ICU Admission Trends</h2>
+            <div class="chart-container">
+                <canvas id="icuTrendsChart"></canvas>
+            </div>
+        </section>
+
+        <!-- ✅ ICU Admissions by Condition (Bar Chart) -->
+        <section id="conditionChartSection" class="hidden">
+            <h2>ICU Admissions by Condition</h2>
+            <div class="chart-container">
+                <canvas id="icuConditionChart"></canvas>
+            </div>
+        </section>
+
+        <!-- ✅ Peak ICU Admissions by Day of the Week -->
+        <section id="peakDayChartSection" class="hidden">
+            <h2>Peak ICU Admissions by Day of the Week</h2>
+            <div class="chart-container">
+                <canvas id="icuPeakDayChart"></canvas>
+            </div>
+        </section>
+
+        <footer>
+            <p>&copy; 2025 ICU Prediction System | All Rights Reserved</p>
+        </footer>
+    </div>
+
+    <script>
+        async function fetchICUTrends() {
+            const days = document.getElementById("trendRange").value;
+            const condition = document.getElementById("conditionFilter").value;
+
+            const response = await fetch(`/api/get_icu_trends?days=${days}&condition=${condition}`);
+            const icuData = await response.json();
+
+            if (!icuData || icuData.length === 0) {
+                alert("No ICU trend data available for the selected period.");
+                return;
+            }
+
+            document.getElementById("trendChartSection").classList.remove("hidden");
+            document.getElementById("conditionChartSection").classList.remove("hidden");
+            document.getElementById("peakDayChartSection").classList.remove("hidden");
+
+            const dates = icuData.map(data => data.date);
+            const icuAdmissions = icuData.map(data => data.admissions);
+            const conditions = icuData.map(data => data.condition);
+            const peakDays = icuData.map(data => data.day_of_week);
+
+            renderChart("icuTrendsChart", "ICU Admissions", dates, icuAdmissions, "line");
+            renderChart("icuConditionChart", "ICU Admissions by Condition", conditions, icuAdmissions, "bar");
+            renderChart("icuPeakDayChart", "Peak ICU Admissions by Day", peakDays, icuAdmissions, "bar");
+        }
+
+        function renderChart(chartId, label, labels, data, type) {
+            const ctx = document.getElementById(chartId).getContext('2d');
+            new Chart(ctx, {
+                type: type,
+                data: {
+                    labels: labels,
+                    datasets: [{
+                        label: label,
+                        data: data,
+                        backgroundColor: ['blue', 'orange', 'red', 'green', 'purple']
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    scales: {
+                        y: { beginAtZero: true }
+                    }
+                }
+            });
+        }
+    </script>
+</body>
+</html>
